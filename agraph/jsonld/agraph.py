@@ -14,20 +14,28 @@ class RESTIOError(IOError):
 def uri_parameter(uris):
    return list(map(lambda x: '<' + str(x) + '>',uris))
 
+def unpack_value(value):
+   if (value[0]=='<' and value[-1]=='>') or (value[0]=='"' and value[-1]=='"'):
+      return value[1:-1]
+   else:
+      return value
+
 def from_json(quads):
    subjects = {}
    for quad in quads:
       target = subjects.get(quad[0])
       if target is None:
-         target = {'@id':quad[0]}
+         target = {'@id':unpack_value(quad[0])}
          subjects[quad[0]] = target
-      value = target.get(quad[1])
+      predicate = unpack_value(quad[1])
+      value = target.get(predicate)
+      new_value = unpack_value(quad[2])
       if value is None:
-         target[quad[1]] = quad[2]
+         target[predicate] = new_value
       elif type(value)==list:
-         list.append(value)
+         list.append(new_value)
       else:
-         target[quad[1]] = [value,quad[2]]
+         target[predicate] = [value,new_value]
    ld = list(subjects.values())
    if len(ld)==1:
       ld = ld[0]
