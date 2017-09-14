@@ -1,0 +1,10 @@
+<!-- extend from base layout -->
+{% extends "base.html" %}
+
+{% block head %}
+<link rel="stylesheet" type="text/css" href="{{url_for('duckpond_blog.index')}}docs/content.css"/>
+{% endblock %}
+
+{% block content %}
+{{ html|safe }}
+{% endblock %}

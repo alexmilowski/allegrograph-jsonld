@@ -1,0 +1,18 @@
+@media print {
+
+@page {
+   margin: 1cm 1cm 1cm 1cm;
+}
+
+body {
+   margin: 0px;
+   padding: 0px;
+   background-color: white;
+   font-size: 10pt !important;
+}
+
+h1 {
+   color: black !important;
+}
+
+}
