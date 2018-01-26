@@ -1,2 +1,2 @@
-# allegrograph-jsonld
-A simple JSON-LD service interface to Allegrograph
+# sparql-jsonld
+A simple JSON-LD service interface for a SPARQL endpoint.
