@@ -3,7 +3,7 @@ import logging
 import requests
 import json
 from pyld import jsonld
-from agraph.jsonld import get, query, update_graph, delete_graph, append_graph
+from sparql_jsonld.jsonld import get, query, update_graph, delete_graph, append_graph
 
 prefix = 'agraph_service_jsonld'
 data = Blueprint(prefix+'_data',__name__,template_folder='templates')
@@ -44,11 +44,8 @@ def retrieve():
    if request.method=='GET':
       subjects = request.args.getlist('subject')
       graphs = request.args.getlist('graph')
-      if ((len(subjects) if subjects is not None else 0) +
-          (len(graphs) if graphs is not None else 0))==0:
-         abort(400,'A subject or graph parameter must be provided')
       ld = get(graphs,subjects)
-      return jsonld_response(ld)
+      return jsonld_response(jsonld.compact(ld,current_app.config.get('LD_CONTEXT')))
    else:
       request_type = content_type()
       if request_type[0]=='application/ld+json':
@@ -58,9 +55,9 @@ def retrieve():
          json = request.get_json(force=True)
          ld = jsonld.compact(json,current_app.config.get('LD_CONTEXT'))
          if request.method=='POST':
-            append_graph(ld,graph=graphs[0] if graphs is not None else None)
+            append_graph(ld,graph=graphs[0] if graphs is not None and len(graphs)>0 else None)
          else:
-            update_graph(ld,graph=graphs[0] if graphs is not None else None)
+            update_graph(ld,graph=graphs[0] if graphs is not None and len(graphs)>0 else None)
          return ('',201)
       elif request_type[0]=='application/sparql-query':
          if request.method=='PUT':
@@ -75,7 +72,7 @@ def retrieve_graph(graph):
    if request.method=='GET':
       subjects = request.args.getlist('subject')
       ld = get([graph],subjects)
-      return jsonld_response(ld)
+      return jsonld_response(jsonld.compact(ld,current_app.config.get('LD_CONTEXT')))
    else:
       request_type = content_type()
       if request_type[0]=='application/ld+json':

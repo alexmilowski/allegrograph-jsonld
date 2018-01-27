@@ -1,10 +1,12 @@
-from flask import Flask
+from flask import Flask, g
 import logging, logging.config, os
 import argparse
+import json
 
 
-from agraph.service.jsonld.views import assets,ui
-from agraph.service.jsonld.service import data
+from sparql_jsonld.service.jsonld.views import assets,ui
+from sparql_jsonld.service.jsonld.service import data
+from sparql_jsonld.jsonld import agraph_make_connection
 
 app = Flask(__name__)
 
@@ -19,15 +21,20 @@ if __name__ == '__main__':
       '--service',
       nargs='?',
       default='http://localhost:10035/repositories/test',
-      help="The allegrograph service")
+      help="The endpoint service")
    parser.add_argument(
       '--auth',
       nargs='?',
-      help="The allegrograph authentication (colon separated)")
+      help="The authentication (colon separated)")
    parser.add_argument(
       '--context',
       nargs='?',
-      help="The allegrograph authentication (colon separated)")
+      help="The JSON-LD context to use")
+   parser.add_argument(
+        '--agraph',
+        action='store_true',
+        default=False,
+        help="Use an Allegrograph direct connection")
    parser.add_argument(
         '--debug',
         action='store_true',
@@ -40,7 +47,7 @@ if __name__ == '__main__':
       app.config.from_envvar('WEB_CONF')
 
    if args.service is not None:
-      app.config['AGRAPH_SERVICE'] = {
+      app.config['SPARQL_JSONLD_ENDPOINT'] = {
          'url' : args.service
       }
 
@@ -53,11 +60,16 @@ if __name__ == '__main__':
 
    if args.auth is not None:
       auth = args.auth.split(':')
-      app.config['AGRAPH_SERVICE']['username'] = auth[0]
+      app.config['SPARQL_JSONLD_ENDPOINT']['username'] = auth[0]
       if len(auth)>1:
-         app.config['AGRAPH_SERVICE']['password'] = auth[1]
+         app.config['SPARQL_JSONLD_ENDPOINT']['password'] = auth[1]
 
    app.config['DEBUG'] = args.debug
+
+   @app.before_request
+   def use_agraph():
+      if args.agraph:
+        g._jsonld_make_connection = agraph_make_connection
 
    logLevel = app.config.get('LOGLEVEL')
    if logLevel is not None:

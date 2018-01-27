@@ -1,10 +1,15 @@
-from flask import has_request_context, has_app_context, current_app, request
+from flask import has_request_context, has_app_context, current_app, request, g
 import requests
 import json
 import urllib
 from pyld import jsonld
 
-from .endpoint import RESTIOError
+class RESTIOError(IOError):
+   def __init__(self,msg,url,status,text):
+      super().__init__(msg)
+      self.url = url;
+      self.status = status
+      self.text = text
 
 def uri_parameter(uris):
    return list(map(lambda x: '<' + str(x) + '>',uris))
@@ -37,7 +42,7 @@ def from_json(quads):
    return ld
 
 
-class AGraphConnection:
+class SPARQLConnection:
    def __init__(self,url,username=None,password=None):
       self.url = url
       if self.url[-1]=='/':
@@ -45,10 +50,7 @@ class AGraphConnection:
       self.username = username
       self.password = password
 
-   def get(self,graphs=[],subjects=[]):
-
-      if len(graphs)==0 and len(subjects)==0:
-         return self.query('CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o }')
+   def get(self,graphs,subjects):
       params = {}
       if len(graphs)>0:
          params['context'] = uri_parameter(graphs)
@@ -128,5 +130,48 @@ class AGraphConnection:
       else:
          return (self.username, self.password)
 
-def agraph_make_connection(url,username=None,password=None):
-   return AGraphConnection(url,username,password)
+def make_connection(url,username=None,password=None):
+   return SPARQLConnection(url,username,password)
+
+def get_connection():
+   if has_app_context():
+      connection = getattr(g,'_jsonld_service',None)
+      if connection is None:
+         service_def = current_app.config.get('SPARQL_JSONLD_ENDPOINT')
+         _make_connection = getattr(g,'_jsonld_make_connection',None)
+         if _make_connection is None:
+            _make_connection = make_connection
+         connection = g._jsonld_service = _make_connection(service_def.get('url'),username=service_def.get('username'),password=service_def.get('password'))
+      return connection
+   else:
+      raise ValueError('No connection can be created')
+
+def get(graphs=[],subjects=[],connection=None):
+   if connection is None:
+      connection = get_connection()
+
+   return connection.get(graphs,subjects)
+
+def query(q,graphs=[],connection=None):
+   if connection is None:
+      connection = get_connection()
+
+   return connection.query(q,graphs=graphs)
+
+def delete_graph(graphs=[],connection=None):
+   if connection is None:
+      connection = get_connection()
+
+   connection.delete(graphs)
+
+def update_graph(data,graph=None,connection=None):
+   if connection is None:
+      connection = get_connection()
+
+   return connection.replace(data,graph)
+
+def append_graph(data,graph=None,connection=None):
+   if connection is None:
+      connection = get_connection()
+
+   return connection.append(data,graph)
